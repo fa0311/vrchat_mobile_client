@@ -1,10 +1,16 @@
 // Flutter imports:
+
+// Dart imports:
+
+// Flutter imports:
 import 'package:flutter/material.dart';
 
 // Package imports:
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 
 // Project imports:
+import 'package:vrchat_mobile_client/api/data_class.dart';
 import 'package:vrchat_mobile_client/api/main.dart';
 import 'package:vrchat_mobile_client/assets/date.dart';
 import 'package:vrchat_mobile_client/assets/error.dart';
@@ -14,7 +20,7 @@ import 'package:vrchat_mobile_client/scenes/world.dart';
 import 'package:vrchat_mobile_client/scenes/worlds_favorite.dart';
 import 'package:vrchat_mobile_client/widgets/region.dart';
 
-Card simpleWorld(BuildContext context, dynamic world) {
+Card simpleWorld(BuildContext context, VRChatLimitedWorld world) {
   return Card(
     elevation: 20.0,
     child: Container(
@@ -24,7 +30,7 @@ Card simpleWorld(BuildContext context, dynamic world) {
           Navigator.push(
               context,
               MaterialPageRoute(
-                builder: (BuildContext context) => VRChatMobileWorld(worldId: world["id"]),
+                builder: (BuildContext context) => VRChatMobileWorld(worldId: world.id),
               ));
         },
         behavior: HitTestBehavior.opaque,
@@ -32,7 +38,18 @@ Card simpleWorld(BuildContext context, dynamic world) {
           children: <Widget>[
             SizedBox(
               height: 100,
-              child: Image.network(world["thumbnailImageUrl"], fit: BoxFit.fitWidth),
+              child: CachedNetworkImage(
+                imageUrl: world.thumbnailImageUrl,
+                fit: BoxFit.fitWidth,
+                progressIndicatorBuilder: (context, url, downloadProgress) => const SizedBox(
+                  width: 100.0,
+                  child: CircularProgressIndicator(),
+                ),
+                errorWidget: (context, url, error) => const SizedBox(
+                  width: 100.0,
+                  child: Icon(Icons.error),
+                ),
+              ),
             ),
             Expanded(
               child: Padding(
@@ -42,7 +59,7 @@ Card simpleWorld(BuildContext context, dynamic world) {
                     SizedBox(
                       width: double.infinity,
                       child: Text(
-                        world["name"],
+                        world.name,
                         style: const TextStyle(fontWeight: FontWeight.bold),
                       ),
                     ),
@@ -50,33 +67,6 @@ Card simpleWorld(BuildContext context, dynamic world) {
                 ),
               ),
             ),
-            if (world.containsKey("favoriteId"))
-              SizedBox(
-                width: 50,
-                child: IconButton(
-                  onPressed: () {
-                    getLoginSession("login_session").then(
-                      (cookie) {
-                        VRChatAPI(cookie: cookie ?? "").deleteFavorites(world["favoriteId"]).then(
-                          (response) {
-                            if (response.containsKey("error")) {
-                              error(context, response["error"]["message"]);
-                              return;
-                            }
-                            Navigator.pop(context);
-                            Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (BuildContext context) => const VRChatMobileWorldsFavorite(),
-                                ));
-                          },
-                        );
-                      },
-                    );
-                  },
-                  icon: const Icon(Icons.delete),
-                ),
-              ),
           ],
         ),
       ),
@@ -84,7 +74,7 @@ Card simpleWorld(BuildContext context, dynamic world) {
   );
 }
 
-Card simpleWorldPlus(BuildContext context, dynamic world, dynamic instance) {
+Card simpleWorldFavorite(BuildContext context, VRChatFavoriteWorld world) {
   return Card(
     elevation: 20.0,
     child: Container(
@@ -94,7 +84,7 @@ Card simpleWorldPlus(BuildContext context, dynamic world, dynamic instance) {
           Navigator.push(
               context,
               MaterialPageRoute(
-                builder: (BuildContext context) => VRChatMobileWorld(worldId: world["id"]),
+                builder: (BuildContext context) => VRChatMobileWorld(worldId: world.id),
               ));
         },
         behavior: HitTestBehavior.opaque,
@@ -102,7 +92,95 @@ Card simpleWorldPlus(BuildContext context, dynamic world, dynamic instance) {
           children: <Widget>[
             SizedBox(
               height: 100,
-              child: Image.network(world["thumbnailImageUrl"], fit: BoxFit.fitWidth),
+              child: CachedNetworkImage(
+                imageUrl: world.thumbnailImageUrl,
+                fit: BoxFit.fitWidth,
+                progressIndicatorBuilder: (context, url, downloadProgress) => const SizedBox(
+                  width: 100.0,
+                  child: CircularProgressIndicator(),
+                ),
+                errorWidget: (context, url, error) => const SizedBox(
+                  width: 100.0,
+                  child: Icon(Icons.error),
+                ),
+              ),
+            ),
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.only(left: 10),
+                child: Column(
+                  children: <Widget>[
+                    SizedBox(
+                      width: double.infinity,
+                      child: Text(
+                        world.name,
+                        style: const TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            SizedBox(
+              width: 50,
+              child: IconButton(
+                onPressed: () {
+                  getLoginSession("login_session").then(
+                    (cookie) {
+                      VRChatAPI(cookie: cookie ?? "").deleteFavorites(world.favoriteId).then((response) {
+                        Navigator.pop(context);
+                        Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (BuildContext context) => const VRChatMobileWorldsFavorite(),
+                            ));
+                      }).catchError((status) {
+                        apiError(context, status);
+                      });
+                    },
+                  );
+                },
+                icon: const Icon(Icons.delete),
+              ),
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
+}
+
+Card simpleWorldPlus(BuildContext context, VRChatWorld world, VRChatInstance instance) {
+  // instance is VRCinstance class
+  return Card(
+    elevation: 20.0,
+    child: Container(
+      padding: const EdgeInsets.all(10.0),
+      child: GestureDetector(
+        onTap: () {
+          Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (BuildContext context) => VRChatMobileWorld(worldId: world.id),
+              ));
+        },
+        behavior: HitTestBehavior.opaque,
+        child: Row(
+          children: <Widget>[
+            SizedBox(
+              height: 100,
+              child: CachedNetworkImage(
+                imageUrl: world.thumbnailImageUrl,
+                fit: BoxFit.fitWidth,
+                progressIndicatorBuilder: (context, url, downloadProgress) => const SizedBox(
+                  width: 100.0,
+                  child: CircularProgressIndicator(),
+                ),
+                errorWidget: (context, url, error) => const SizedBox(
+                  width: 100.0,
+                  child: Icon(Icons.error),
+                ),
+              ),
             ),
             Expanded(
               child: Padding(
@@ -113,22 +191,22 @@ Card simpleWorldPlus(BuildContext context, dynamic world, dynamic instance) {
                       Padding(
                         padding: const EdgeInsets.only(right: 5),
                         child: region(
-                          instance["region"],
+                          instance.region,
                         ),
                       ),
                       const Icon(Icons.groups),
-                      Padding(padding: const EdgeInsets.only(right: 5), child: Text("${instance['n_users']}/${instance['capacity']}")),
+                      Padding(padding: const EdgeInsets.only(right: 5), child: Text("${instance.nUsers}/${instance.capacity}")),
                       Expanded(
                         child: SizedBox(
                           width: double.infinity,
-                          child: Text(getVrchatInstanceType()[instance["type"]] ?? "?"),
+                          child: Text(getVrchatInstanceType()[instance.type] ?? "?"),
                         ),
                       )
                     ]),
                     SizedBox(
                       width: double.infinity,
                       child: Text(
-                        world["name"],
+                        world.name,
                         style: const TextStyle(fontWeight: FontWeight.bold),
                       ),
                     ),
@@ -153,7 +231,18 @@ Card privatesimpleWorld(BuildContext context) {
           children: <Widget>[
             SizedBox(
               height: 100,
-              child: Image.network("https://assets.vrchat.com/www/images/default_private_image.png", fit: BoxFit.fitWidth),
+              child: CachedNetworkImage(
+                imageUrl: "https://assets.vrchat.com/www/images/default_private_image.png",
+                fit: BoxFit.fitWidth,
+                progressIndicatorBuilder: (context, url, downloadProgress) => const SizedBox(
+                  width: 100.0,
+                  child: CircularProgressIndicator(),
+                ),
+                errorWidget: (context, url, error) => const SizedBox(
+                  width: 100.0,
+                  child: Icon(Icons.error),
+                ),
+              ),
             ),
             Expanded(
               child: Padding(
@@ -179,13 +268,24 @@ Card privatesimpleWorld(BuildContext context) {
   );
 }
 
-Column world(BuildContext context, dynamic world) {
+Column world(BuildContext context, VRChatWorld world) {
   return Column(children: <Widget>[
     SizedBox(
       height: 250,
-      child: Image.network(world["imageUrl"], fit: BoxFit.fitWidth),
+      child: CachedNetworkImage(
+        imageUrl: world.imageUrl,
+        fit: BoxFit.fitWidth,
+        progressIndicatorBuilder: (context, url, downloadProgress) => const SizedBox(
+          width: 250.0,
+          child: CircularProgressIndicator(),
+        ),
+        errorWidget: (context, url, error) => const SizedBox(
+          width: 250.0,
+          child: Icon(Icons.error),
+        ),
+      ),
     ),
-    Text(world["name"],
+    Text(world.name,
         style: const TextStyle(
           fontWeight: FontWeight.bold,
           fontSize: 20,
@@ -193,32 +293,32 @@ Column world(BuildContext context, dynamic world) {
     ConstrainedBox(
       constraints: const BoxConstraints(maxHeight: 200),
       child: SingleChildScrollView(
-        child: Text(world["description"]),
+        child: Text(world.description ?? ""),
       ),
     ),
     Text(
       AppLocalizations.of(context)!.occupants(
-        world["occupants"],
+        world.occupants,
       ),
     ),
     Text(
       AppLocalizations.of(context)!.privateOccupants(
-        world["privateOccupants"],
+        world.privateOccupants,
       ),
     ),
     Text(
       AppLocalizations.of(context)!.favorites(
-        world["favorites"],
+        world.favorites,
       ),
     ),
     Text(
       AppLocalizations.of(context)!.createdAt(
-        generalDateDifference(context, world["created_at"]),
+        generalDateDifference(context, world.createdAt),
       ),
     ),
     Text(
       AppLocalizations.of(context)!.updatedAt(
-        generalDateDifference(context, world["updated_at"]),
+        generalDateDifference(context, world.updatedAt),
       ),
     ),
   ]);
